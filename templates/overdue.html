@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Overdue Tasks{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5 fw-bold">
+                <i class="bi bi-exclamation-circle text-danger"></i> Overdue Tasks
+            </h1>
+            <p class="text-muted">Tasks that have passed their due date</p>
+        </div>
+    </div>
+
+    {% if todos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%"></th>
+                        <th style="width: 45%">Task</th>
+                        <th style="width: 20%">Due Date</th>
+                        <th style="width: 15%">Priority</th>
+                        <th style="width: 15%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for todo in todos %}
+                    <tr data-task-id="{{ todo.idx }}" style="cursor: pointer;">
+                        <td>
+                            <i class="bi bi-arrow-right text-danger fw-bold"></i>
+                        </td>
+                        <td class="fw-500">{{ todo.task }}</td>
+                        <td>
+                            <small class="text-muted">{{ todo.due if todo.due else 'No date' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">{{ todo.priority }}</span>
+                        </td>
+                        <td>
+                            <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit task">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                            <form method="POST" action="/delete/{{ todo.idx }}" style="display: inline;" 
+                                  onsubmit="return confirm('Move this task to trash?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete task">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center py-5">
+            <i class="bi bi-calendar-check display-4 d-block mb-3"></i>
+            <h5>No Overdue Tasks</h5>
+            <p class="text-muted mb-0">All your tasks are on schedule! Keep up the great work.</p>
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="/" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Task - Todo App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body p-5">
+                <h3 class="mb-4"><i class="bi bi-pencil-square"></i> Edit Task</h3>
+
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/edit/{{ idx }}">
+                    <div class="mb-4">
+                        <label for="task" class="form-label fw-semibold">Task Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg rounded-3" id="task" name="task" 
+                               value="{{ todo.task }}" required autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="due" class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg rounded-3" id="due" name="due" 
+                               value="{{ todo.due }}" required>
+                        <small class="text-muted">Format: mm/dd/yyyy</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="description" class="form-label fw-semibold">Description (Optional)</label>
+                        <textarea class="form-control rounded-3" id="description" name="description" rows="4">{{ todo.description or '' }}</textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/tasks" class="btn btn-secondary btn-lg rounded-3">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-3">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('due').addEventListener('keyup', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+        value = value.slice(0, 2) + '/' + value.slice(2);
+    }
+    if (value.length >= 5) {
+        value = value.slice(0, 5) + '/' + value.slice(5, 9);
+    }
+    e.target.value = value;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Todo App{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header with Sort Controls -->
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h1 class="display-5 fw-bold mb-0">
+                <i class="bi bi-list-check"></i> My Tasks
+            </h1>
+        </div>
+        <div class="col-auto">
+            <div class="d-flex gap-2">
+                <label class="form-label mb-0">Sort By:</label>
+                <select class="form-select form-select-sm" id="sortSelect" style="width: auto;">
+                    <option value="alpha-asc" {% if sort_by == 'alpha-asc' %}selected{% endif %}>A → Z</option>
+                    <option value="alpha-desc" {% if sort_by == 'alpha-desc' %}selected{% endif %}>Z → A</option>
+                    <option value="priority-high" {% if sort_by == 'priority-high' %}selected{% endif %}>Priority: High to Low</option>
+                    <option value="priority-low" {% if sort_by == 'priority-low' %}selected{% endif %}>Priority: Low to High</option>
+                    <option value="date-oldest" {% if sort_by == 'date-oldest' %}selected{% endif %}>Date: Oldest First</option>
+                    <option value="date-newest" {% if sort_by == 'date-newest' %}selected{% endif %}>Date: Newest First</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Toggle (All / Pending / Completed / Overdue) -->
+    <div class="mb-3 d-flex align-items-center gap-2">
+        <div id="viewToggle" class="btn-group btn-group-sm" role="group" aria-label="View Toggle">
+            <button class="btn btn-outline-secondary active" data-view="all">All</button>
+            <button class="btn btn-outline-secondary" data-view="pending">Pending</button>
+            <button class="btn btn-outline-secondary" data-view="completed">Completed</button>
+            <button class="btn btn-outline-secondary" data-view="overdue">Overdue</button>
+        </div>
+    </div>
+
+    <!-- Pending Tasks Section -->
+    {% if pending %}
+    <div id="pending-section" class="mb-5">
+        <h4 class="mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-circle text-primary"></i>
+            <span>Pending Tasks ({{ pending|length }})</span>
+        </h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 45%">Task</th>
+                        <th style="width: 20%">Due Date</th>
+                        <th style="width: 15%">Priority</th>
+                        <th style="width: 20%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for todo in pending %}
+                    <tr data-task-id="{{ todo.idx }}" style="cursor: pointer;">
+                        <td class="fw-500">{{ todo.task }}</td>
+                        <td>
+                            <small class="text-muted">{{ todo.due if todo.due else 'No date' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ todo.priority_color }}">{{ todo.priority }}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-success complete-btn" data-idx="{{ todo.idx }}" title="Mark Complete">
+                                <i class="bi bi-check-circle"></i> Complete
+                            </button>
+                            <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                            <button class="btn btn-sm btn-outline-info assist-btn" data-idx="{{ todo.idx }}" title="AI Assist">
+                                <i class="bi bi-robot"></i> Assist
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-idx="{{ todo.idx }}" title="Delete">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Overdue Tasks Section -->
+    {% if overdue %}
+    <div id="overdue-section" class="mb-5">
+        <h4 class="mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-circle text-danger"></i>
+            <span>Overdue Tasks ({{ overdue|length }})</span>
+        </h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 45%">Task</th>
+                        <th style="width: 20%">Due Date</th>
+                        <th style="width: 15%">Priority</th>
+                        <th style="width: 20%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for todo in overdue %}
+                    <tr data-task-id="{{ todo.idx }}" style="cursor: pointer;">
+                        <td class="fw-500">{{ todo.task }}</td>
+                        <td>
+                            <small class="text-muted">{{ todo.due if todo.due else 'No date' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ todo.priority_color }}">{{ todo.priority }}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-success complete-btn" data-idx="{{ todo.idx }}" title="Mark Complete">
+                                <i class="bi bi-check-circle"></i> Complete
+                            </button>
+                            <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                            <button class="btn btn-sm btn-outline-info assist-btn" data-idx="{{ todo.idx }}" title="AI Assist">
+                                <i class="bi bi-robot"></i> Assist
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-idx="{{ todo.idx }}" title="Delete">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Completed Tasks Section -->
+    {% if completed %}
+    <div id="completed-section" class="mb-5">
+        <h4 class="mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle text-success"></i>
+            <span>Completed Tasks ({{ completed|length }})</span>
+        </h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 45%">Task</th>
+                        <th style="width: 20%">Due Date</th>
+                        <th style="width: 15%">Priority</th>
+                        <th style="width: 20%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for todo in completed %}
+                    <tr data-task-id="{{ todo.idx }}" style="cursor: pointer;">
+                        <td class="fw-500 text-decoration-line-through text-muted">{{ todo.task }}</td>
+                        <td>
+                            <small class="text-muted">{{ todo.due if todo.due else 'No date' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ todo.priority_color }}">{{ todo.priority }}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary complete-btn" data-idx="{{ todo.idx }}" title="Mark Incomplete">
+                                <i class="bi bi-x-circle"></i> Undo
+                            </button>
+                            <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                            <button class="btn btn-sm btn-outline-warning save-btn" data-idx="{{ todo.idx }}" title="Save to Archives">
+                                <i class="bi bi-bookmark"></i> Save
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-idx="{{ todo.idx }}" title="Delete">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not pending and not overdue and not completed %}
+    <div class="alert alert-info text-center py-5">
+        <i class="bi bi-inbox display-4 d-block mb-3"></i>
+        <h5>No tasks yet</h5>
+        <p class="text-muted mb-3">Create your first task to get started</p>
+        <a href="/add" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Create Task
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    {% if total != 0 %}
+    <div class="row mt-5 pt-4 border-top">
+        <div class="col-md-4">
+            <div class="stat-card stat-pending rounded-4 p-4 text-white">
+                <div class="fs-6 opacity-75">
+                    <i class="bi bi-circle"></i> Pending
+                </div>
+                <div class="display-6 fw-bold">{{ pending|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-success rounded-4 p-4 text-white">
+                <div class="fs-6 opacity-75">
+                    <i class="bi bi-check-circle"></i> Completed
+                </div>
+                <div class="display-6 fw-bold">{{ completed|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-overdue rounded-4 p-4 text-white">
+                <div class="fs-6 opacity-75">
+                    <i class="bi bi-exclamation-circle"></i> Overdue
+                </div>
+                <div class="display-6 fw-bold">{{ overdue|length }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- AI Assist Modal -->
+<div class="modal fade" id="assistModal" tabindex="-1" aria-labelledby="assistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assistModalLabel">AI Assistance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="assist-content">
+                    <p class="text-muted">Generating suggestions…</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sort functionality
+document.getElementById('sortSelect').addEventListener('change', function() {
+    window.location.href = '/?sort=' + this.value;
+});
+
+// Complete task
+document.querySelectorAll('.complete-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const idx = this.dataset.idx;
+        try {
+            const response = await fetch(`/complete/${idx}`, { method: 'POST' });
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+});
+
+// Delete task
+document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        if (confirm('Move this task to trash?')) {
+            const idx = this.dataset.idx;
+            try {
+                const response = await fetch(`/delete/${idx}`, { method: 'POST' });
+                if (response.ok) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    });
+});
+
+// Save task
+document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const idx = this.dataset.idx;
+        try {
+            const response = await fetch(`/save/${idx}`, { method: 'POST' });
+            if (response.ok) {
+                showNotification('Task saved to archives!', 'success');
+                setTimeout(() => location.reload(), 800);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Error saving task', 'danger');
+        }
+    });
+});
+
+// View toggle functionality (All / Pending / Completed / Overdue)
+(() => {
+    const viewButtons = document.querySelectorAll('#viewToggle button');
+    const sections = {
+        pending: document.getElementById('pending-section'),
+        completed: document.getElementById('completed-section'),
+        overdue: document.getElementById('overdue-section')
+    };
+
+    function showView(view) {
+        if (view === 'all') {
+            Object.values(sections).forEach(s => { if (s) s.style.display = 'block'; });
+        } else {
+            Object.values(sections).forEach(s => { if (s) s.style.display = 'none'; });
+            if (sections[view]) sections[view].style.display = 'block';
+        }
+        viewButtons.forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    }
+
+    viewButtons.forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+    // default view
+    showView('all');
+
+    // PageUp / PageDown navigation: scroll by viewport height
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'PageDown' || e.key === 'PageUp') {
+            e.preventDefault();
+            const top = window.scrollY;
+            const viewport = window.innerHeight;
+            if (e.key === 'PageDown') {
+                window.scrollTo({ top: top + viewport, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: Math.max(0, top - viewport), behavior: 'smooth' });
+            }
+        }
+    });
+})();
+
+// AI Assist button handler
+document.querySelectorAll('.assist-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const idx = this.dataset.idx;
+        try {
+            const response = await fetch(`/assist?idx=${idx}`);
+            if (!response.ok) {
+                console.error('Assist failed');
+                return;
+            }
+            const data = await response.json();
+            if (!data.success) {
+                document.getElementById('assist-content').innerHTML = '<p class="text-danger">Could not generate suggestions.</p>';
+            } else {
+                let html = '';
+                html += `<h5>Suggested Title</h5><p>${data.title}</p>`;
+                html += `<h5>Suggested Description</h5><p>${data.description}</p>`;
+                html += '<h5>Plan</h5><ol>';
+                data.plan.forEach(s => { html += `<li>${s}</li>`; });
+                html += '</ol>';
+                if (data.days_remaining !== null && data.days_remaining !== undefined) {
+                    html += `<p class="text-muted">Days remaining: ${data.days_remaining}</p>`;
+                }
+                document.getElementById('assist-content').innerHTML = html;
+            }
+            const modalEl = document.getElementById('assistModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('assist-content').innerHTML = '<p class="text-danger">Error generating suggestions.</p>';
+            const modalEl = document.getElementById('assistModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    });
+});
+</script>
+{% endblock %}
