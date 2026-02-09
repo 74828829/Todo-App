@@ -49,6 +49,9 @@ def cleanup_completed(todos):
         save_todos(remaining)
     return remaining
 
+# Get port from environment variable (Railway provides PORT)
+PORT = int(os.environ.get('PORT', 5000))
+
 def cleanup_deleted(todos):
     """Permanently remove todos that were deleted more than 3 days ago."""
     changed = False
@@ -655,5 +658,7 @@ def get_task_notifications(idx):
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    # Production settings for Railway
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    app.run(debug=debug_mode, host='0.0.0.0', port=PORT)
  
