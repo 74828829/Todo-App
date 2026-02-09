@@ -17,14 +17,15 @@
                 <select class="form-select form-select-sm" id="sortSelect" style="width: auto;">
                     <option value="alpha-asc" {% if sort_by == 'alpha-asc' %}selected{% endif %}>A → Z</option>
                     <option value="alpha-desc" {% if sort_by == 'alpha-desc' %}selected{% endif %}>Z → A</option>
-                    <option value="priority-high" {% if sort_by == 'priority-high' %}selected{% endif %}>Priority: High to Low</option>
-                    <option value="priority-low" {% if sort_by == 'priority-low' %}selected{% endif %}>Priority: Low to High</option>
                     <option value="date-oldest" {% if sort_by == 'date-oldest' %}selected{% endif %}>Date: Oldest First</option>
                     <option value="date-newest" {% if sort_by == 'date-newest' %}selected{% endif %}>Date: Newest First</option>
                 </select>
             </div>
         </div>
     </div>
+
+    <!-- Daily High Priority Reminder Notification -->
+    <!-- Temporarily disabled for now -->
 
     <!-- View Toggle (All / Pending / Completed / Overdue) -->
     <div class="mb-3 d-flex align-items-center gap-2">
@@ -35,6 +36,40 @@
             <button class="btn btn-outline-secondary" data-view="overdue">Overdue</button>
         </div>
     </div>
+
+    <!-- Top stats moved above lists -->
+    {% if total != 0 %}
+    <div class="row mb-3 gx-3 align-items-stretch">
+        <div class="col-md-4">
+            <div class="stat-card stat-pending rounded-4 p-3 text-white">
+                <div>
+                    <div class="fs-6 opacity-75"><i class="bi bi-circle"></i> Pending</div>
+                    <div class="display-6 fw-bold">{{ pending|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-success rounded-4 p-3 text-white">
+                <div>
+                    <div class="fs-6 opacity-75"><i class="bi bi-check-circle"></i> Completed</div>
+                    <div class="display-6 fw-bold">{{ completed|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-overdue rounded-4 p-3 text-white">
+                <div>
+                    <div class="fs-6 opacity-75"><i class="bi bi-exclamation-circle"></i> Overdue</div>
+                    <div class="display-6 fw-bold">{{ overdue|length }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main two-column layout: lists (left) + calendar/clock (right) -->
+    <div class="row">
+        <div class="col-lg-8" id="lists-column">
 
     <!-- Pending Tasks Section -->
     {% if pending %}
@@ -70,9 +105,6 @@
                             <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit">
                                 <i class="bi bi-pencil-square"></i> Edit
                             </a>
-                            <button class="btn btn-sm btn-outline-info assist-btn" data-idx="{{ todo.idx }}" title="AI Assist">
-                                <i class="bi bi-robot"></i> Assist
-                            </button>
                             <button class="btn btn-sm btn-outline-danger delete-btn" data-idx="{{ todo.idx }}" title="Delete">
                                 <i class="bi bi-trash"></i> Delete
                             </button>
@@ -119,9 +151,6 @@
                             <a href="/edit/{{ todo.idx }}" class="btn btn-sm btn-outline-primary" title="Edit">
                                 <i class="bi bi-pencil-square"></i> Edit
                             </a>
-                            <button class="btn btn-sm btn-outline-info assist-btn" data-idx="{{ todo.idx }}" title="AI Assist">
-                                <i class="bi bi-robot"></i> Assist
-                            </button>
                             <button class="btn btn-sm btn-outline-danger delete-btn" data-idx="{{ todo.idx }}" title="Delete">
                                 <i class="bi bi-trash"></i> Delete
                             </button>
@@ -195,52 +224,21 @@
     </div>
     {% endif %}
 
-    <!-- Summary Stats -->
-    {% if total != 0 %}
-    <div class="row mt-5 pt-4 border-top">
-        <div class="col-md-4">
-            <div class="stat-card stat-pending rounded-4 p-4 text-white">
-                <div class="fs-6 opacity-75">
-                    <i class="bi bi-circle"></i> Pending
-                </div>
-                <div class="display-6 fw-bold">{{ pending|length }}</div>
-            </div>
         </div>
-        <div class="col-md-4">
-            <div class="stat-card stat-success rounded-4 p-4 text-white">
-                <div class="fs-6 opacity-75">
-                    <i class="bi bi-check-circle"></i> Completed
+        <div class="col-lg-4" id="side-column">
+            <div class="card shadow-sm mb-3 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Calendar</h6>
+                    <small id="clock" class="text-muted"></small>
                 </div>
-                <div class="display-6 fw-bold">{{ completed|length }}</div>
+                <div id="mini-calendar" class="w-100"></div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card stat-overdue rounded-4 p-4 text-white">
-                <div class="fs-6 opacity-75">
-                    <i class="bi bi-exclamation-circle"></i> Overdue
+            <div class="card shadow-sm p-3">
+                <h6>Quick Actions</h6>
+                <div class="d-grid gap-2 mt-2">
+                    <a href="/add" class="btn btn-primary btn-sm">Create Task</a>
+                    <a href="/deleted" class="btn btn-outline-secondary btn-sm">View Trash</a>
                 </div>
-                <div class="display-6 fw-bold">{{ overdue|length }}</div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-
-<!-- AI Assist Modal -->
-<div class="modal fade" id="assistModal" tabindex="-1" aria-labelledby="assistModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="assistModalLabel">AI Assistance</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="assist-content">
-                    <p class="text-muted">Generating suggestions…</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -345,43 +343,54 @@ document.querySelectorAll('.save-btn').forEach(btn => {
     });
 })();
 
-// AI Assist button handler
-document.querySelectorAll('.assist-btn').forEach(btn => {
-    btn.addEventListener('click', async function(e) {
-        e.stopPropagation();
-        const idx = this.dataset.idx;
-        try {
-            const response = await fetch(`/assist?idx=${idx}`);
-            if (!response.ok) {
-                console.error('Assist failed');
-                return;
-            }
-            const data = await response.json();
-            if (!data.success) {
-                document.getElementById('assist-content').innerHTML = '<p class="text-danger">Could not generate suggestions.</p>';
-            } else {
-                let html = '';
-                html += `<h5>Suggested Title</h5><p>${data.title}</p>`;
-                html += `<h5>Suggested Description</h5><p>${data.description}</p>`;
-                html += '<h5>Plan</h5><ol>';
-                data.plan.forEach(s => { html += `<li>${s}</li>`; });
-                html += '</ol>';
-                if (data.days_remaining !== null && data.days_remaining !== undefined) {
-                    html += `<p class="text-muted">Days remaining: ${data.days_remaining}</p>`;
+// Calendar + Clock
+(() => {
+    function pad(n){return n<10?'0'+n:n}
+    function updateClock(){
+        const el = document.getElementById('clock');
+        if(!el) return;
+        const now = new Date();
+        el.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Simple calendar render for current month
+    function renderCalendar(){
+        const container = document.getElementById('mini-calendar');
+        if(!container) return;
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const first = new Date(year, month, 1);
+        const last = new Date(year, month + 1, 0);
+
+        let html = '<table class="table table-borderless small"><thead><tr>';
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        days.forEach(d=>html += `<th class="text-muted">${d}</th>`);
+        html += '</tr></thead><tbody>';
+
+        let dayIndex = 1 - first.getDay();
+        while(dayIndex <= last.getDate()){
+            html += '<tr>';
+            for(let i=0;i<7;i++){
+                if(dayIndex < 1 || dayIndex > last.getDate()){
+                    html += '<td></td>';
+                } else {
+                    const isToday = dayIndex === today.getDate();
+                    html += `<td class="py-1 ${isToday? 'bg-primary text-white rounded':''}">${dayIndex}</td>`;
                 }
-                document.getElementById('assist-content').innerHTML = html;
+                dayIndex++;
             }
-            const modalEl = document.getElementById('assistModal');
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        } catch (error) {
-            console.error('Error:', error);
-            document.getElementById('assist-content').innerHTML = '<p class="text-danger">Error generating suggestions.</p>';
-            const modalEl = document.getElementById('assistModal');
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
+            html += '</tr>';
         }
-    });
-});
+        html += `</tbody></table><div class="text-center text-muted small mt-1">${today.toLocaleString([], {month:'long', year:'numeric'})}</div>`;
+        container.innerHTML = html;
+    }
+    renderCalendar();
+    // Refresh calendar at midnight
+    setInterval(renderCalendar, 60*60*1000);
+})();
+
 </script>
 {% endblock %}

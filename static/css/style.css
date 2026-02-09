@@ -228,6 +228,38 @@ main {
     background-color: #f8f9fa;
 }
 
+/* Layout adjustments for dashboard two-column */
+#lists-column .table-responsive {
+    max-height: 60vh;
+    overflow: auto;
+}
+
+#lists-column table {
+    font-size: 0.95rem;
+}
+
+#side-column #mini-calendar {
+    width: 100%;
+    text-align: center;
+}
+
+#side-column .card {
+    border-radius: 0.75rem;
+}
+
+#clock {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 700;
+}
+
+/* smaller listing cards */
+.table.table-hover thead th {
+    font-size: 0.85rem;
+}
+.table.table-hover td {
+    padding: 0.5rem 0.75rem;
+}
+
 /* ============================================================================
    BULK ACTIONS BAR
    ============================================================================ */
@@ -565,4 +597,132 @@ footer p {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #764ba2;
+}
+/* ============================================================================
+   PWA & INSTALLATION STYLING
+   ============================================================================ */
+
+/* Install button in navbar */
+#installButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.5rem;
+    color: #198754 !important;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+#installButton:hover {
+    background-color: rgba(25, 135, 84, 0.1);
+    transform: scale(1.05);
+}
+
+#installButton i {
+    font-size: 1.2rem;
+}
+
+/* Install prompt modal styling */
+#installPromptModal .modal-content {
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#installPromptModal .modal-body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #f0f0f0 100%);
+}
+
+#installPromptModal .btn-primary {
+    background: var(--gradient-primary);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+}
+
+#installPromptModal .btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b3a8f 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+#installPromptModal .btn-outline-secondary {
+    color: #6c757d;
+    border-color: #dee2e6;
+}
+
+#installPromptModal .btn-outline-secondary:hover {
+    background: #f0f0f0;
+    border-color: #adb5bd;
+}
+
+/* Offline indicator */
+.offline-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 0.75rem 1.5rem;
+    background: #dc3545;
+    color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    z-index: 1000;
+}
+
+.offline-indicator.show {
+    display: flex;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* PWA safe area for notch/status bar */
+@supports (padding-left: env(safe-area-inset-left)) {
+    body {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Responsive adjustments for installed app */
+@media (display-mode: standalone) {
+    /* Hide address bar and navigation when running as PWA */
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .navbar {
+        border-radius: 0;
+    }
+}
+
+/* Mobile optimization for touch devices */
+@media (max-width: 768px) {
+    #installButton {
+        padding: 0.5rem 0.75rem !important;
+    }
+    
+    #installButton span {
+        display: none;
+    }
+    
+    #installPromptModal .modal-body {
+        padding: 1.5rem 1rem;
+    }
 }

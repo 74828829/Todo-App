@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
 import json
 import os
 from datetime import datetime, timedelta
@@ -105,6 +105,101 @@ def get_priority_color(priority):
     return colors.get(priority, 'secondary')
 
 # ============================================================================
+# RECURRENCE AND NOTIFICATION FUNCTIONS
+# ============================================================================
+
+def parse_recurrence_pattern(pattern_str):
+    """Parse recurrence pattern string. Format: 'daily|weekly|monthly|yearly|none'"""
+    if not pattern_str or pattern_str == 'none':
+        return None
+    return pattern_str.lower()
+
+def get_next_occurrence_date(due_date_str, pattern):
+    """Calculate next occurrence date based on recurrence pattern"""
+    if not pattern or pattern == 'none':
+        return None
+    try:
+        current_due = datetime.strptime(due_date_str, '%m/%d/%Y')
+        if pattern == 'daily':
+            next_due = current_due + timedelta(days=1)
+        elif pattern == 'weekly':
+            next_due = current_due + timedelta(weeks=1)
+        elif pattern == 'monthly':
+            # Add approximately 30 days (basic month logic)
+            if current_due.month == 12:
+                next_due = current_due.replace(year=current_due.year + 1, month=1)
+            else:
+                next_due = current_due.replace(month=current_due.month + 1)
+        elif pattern == 'yearly':
+            next_due = current_due.replace(year=current_due.year + 1)
+        else:
+            return None
+        return next_due.strftime('%m/%d/%Y')
+    except Exception:
+        return None
+
+def check_and_handle_notifications(todos):
+    """Check for priority changes and create notifications"""
+    notifications = []
+    for idx, todo in enumerate(todos, 1):
+        if todo.get('deleted') or todo.get('saved'):
+            continue
+        current_priority = calculate_priority(todo.get('due', ''))
+        previous_priority = todo.get('previous_priority', None)
+        # If priority changed, log notification
+        if previous_priority and previous_priority != current_priority:
+            notifications.append({
+                'type': 'priority_change',
+                'task': todo.get('task'),
+                'old_priority': previous_priority,
+                'new_priority': current_priority,
+                'timestamp': datetime.now().isoformat()
+            })
+        # Update previous priority for next check
+        todo['previous_priority'] = current_priority
+    return notifications
+
+def get_high_priority_reminder(todos):
+    """Get count and summary of high priority tasks for daily reminder"""
+    high_priority_tasks = []
+    for todo in todos:
+        if not todo.get('completed') and not todo.get('deleted') and not todo.get('saved'):
+            priority = calculate_priority(todo.get('due', ''))
+            if priority in ['HIGH', 'OVERDUE']:
+                high_priority_tasks.append({
+                    'task': todo.get('task'),
+                    'priority': priority,
+                    'due': todo.get('due')
+                })
+    return high_priority_tasks
+
+def handle_recurring_task_completion(todos, idx):
+    """When a recurring task is marked complete, create next occurrence"""
+    if idx < 1 or idx > len(todos):
+        return
+    todo = todos[idx - 1]
+    pattern = todo.get('recurrence')
+    if pattern and pattern != 'none':
+        next_due = get_next_occurrence_date(todo.get('due', ''), pattern)
+        if next_due:
+            # Create a new task for next occurrence
+            new_todo = {
+                'task': todo.get('task'),
+                'due': next_due,
+                'description': todo.get('description', ''),
+                'recurrence': pattern,
+                'completed': False,
+                'completed_at': None,
+                'deleted': False,
+                'deleted_at': None,
+                'saved': False,
+                'saved_at': None,
+                'previous_priority': None
+            }
+            todos.append(new_todo)
+            save_todos(todos)
+
+# ============================================================================
 # JINJA2 CONTEXT PROCESSOR - Make functions available in templates
 # ============================================================================
 
@@ -113,8 +208,25 @@ def inject_template_functions():
     """Inject utility functions into Jinja2 template context"""
     return {
         'calculate_priority': calculate_priority,
-        'get_priority_color': get_priority_color
+        'get_priority_color': get_priority_color,
+        'get_high_priority_reminder': get_high_priority_reminder
     }
+
+# ============================================================================
+# PWA ROUTES
+# ============================================================================
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve PWA manifest for installation"""
+    manifest_path = os.path.join(os.path.dirname(__file__), 'manifest.json')
+    return send_file(manifest_path, mimetype='application/manifest+json')
+
+@app.route('/service-worker.js')
+def service_worker():
+    """Serve service worker for offline support and caching"""
+    sw_path = os.path.join(os.path.dirname(__file__), 'static', 'js', 'service-worker.js')
+    return send_file(sw_path, mimetype='application/javascript')
 
 # ============================================================================
 # ROUTES
@@ -126,12 +238,6 @@ def sort_tasks(tasks, sort_by='alpha-asc'):
         return sorted(tasks, key=lambda t: t.get('task', '').lower())
     elif sort_by == 'alpha-desc':
         return sorted(tasks, key=lambda t: t.get('task', '').lower(), reverse=True)
-    elif sort_by == 'priority-high':
-        priority_order = {'OVERDUE': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
-        return sorted(tasks, key=lambda t: priority_order.get(calculate_priority(t.get('due', '')), 4))
-    elif sort_by == 'priority-low':
-        priority_order = {'OVERDUE': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
-        return sorted(tasks, key=lambda t: priority_order.get(calculate_priority(t.get('due', '')), 4), reverse=True)
     elif sort_by == 'date-oldest':
         def parse_date(date_str):
             try:
@@ -153,8 +259,8 @@ def dashboard():
     """Main dashboard showing all tasks organized by status"""
     todos = cleanup_completed(load_todos())
     todos = cleanup_deleted(todos)
-    # default to showing highest-priority first unless user overrides
-    sort_by = request.args.get('sort', 'priority-high')
+    # default to showing oldest due date first unless user overrides
+    sort_by = request.args.get('sort', 'date-oldest')
 
     # Build active_todos from the full list so `idx` refers to the global todos index
     active_todos = []
@@ -178,6 +284,9 @@ def dashboard():
     saved = [t for t in todos if t.get('saved', False) and not t.get('deleted', False)]
     deleted = [t for t in todos if t.get('deleted', False)]
     
+    # Get high priority reminder
+    high_priority_reminder = get_high_priority_reminder(todos)
+    
     return render_template('dashboard.html', 
                          pending=pending,
                          completed=completed,
@@ -185,7 +294,9 @@ def dashboard():
                          saved_count=len(saved),
                          deleted_count=len(deleted),
                          total=len(active_todos),
-                         sort_by=sort_by)
+                         sort_by=sort_by,
+                         high_priority_reminder=high_priority_reminder,
+                         high_priority_count=len(high_priority_reminder))
 
 
 
@@ -271,6 +382,7 @@ def add_task():
         task = request.form.get('task', '').strip()
         due = request.form.get('due', '').strip()
         description = request.form.get('description', '').strip()
+        recurrence = request.form.get('recurrence', 'none').strip()
         
         if not task:
             return render_template('add_task.html', error='Task name cannot be empty.'), 400
@@ -283,15 +395,17 @@ def add_task():
             'task': task,
             'due': due,
             'description': description,
+            'recurrence': recurrence,
             'completed': False,
             'completed_at': None,
             'deleted': False,
             'deleted_at': None,
             'saved': False,
-            'saved_at': None
+            'saved_at': None,
+            'previous_priority': None
         })
         save_todos(todos)
-        return redirect(url_for('tasks_list'))
+        return redirect(url_for('dashboard'))
     
     return render_template('add_task.html')
 
@@ -300,12 +414,13 @@ def edit_task(idx):
     """Edit an existing task"""
     todos = load_todos()
     if idx < 1 or idx > len(todos):
-        return redirect(url_for('tasks_list'))
+        return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
         task = request.form.get('task', '').strip()
         due = request.form.get('due', '').strip()
         description = request.form.get('description', '').strip()
+        recurrence = request.form.get('recurrence', 'none').strip()
         
         if not task:
             todo = todos[idx - 1]
@@ -318,8 +433,9 @@ def edit_task(idx):
         todos[idx - 1]['task'] = task
         todos[idx - 1]['due'] = due
         todos[idx - 1]['description'] = description
+        todos[idx - 1]['recurrence'] = recurrence
         save_todos(todos)
-        return redirect(url_for('tasks_list'))
+        return redirect(url_for('dashboard'))
     
     todo = todos[idx - 1]
     return render_template('edit_task.html', idx=idx, todo=todo)
@@ -340,8 +456,12 @@ def complete_task(idx):
         # If incomplete, mark as complete
         todos[idx - 1]['completed'] = True
         todos[idx - 1]['completed_at'] = datetime.now().isoformat()
+        # If recurring, create next occurrence
+        handle_recurring_task_completion(todos, idx)
     
     todos = cleanup_completed(todos)
+    # Check for priority changes and store for notifications
+    check_and_handle_notifications(todos)
     save_todos(todos)
     return jsonify({'success': True})
 
@@ -494,72 +614,44 @@ def get_stats():
         'overdue': overdue
     })
 
-
-@app.route('/assist')
-def assist():
-    """Return a simple task breakdown with suggested timeline (no external APIs).
-
-    The endpoint simulates a lightweight assistant: it returns a small set of
-    actionable subtasks with deadlines based on the task due date. This keeps
-    everything local and deterministic (no API keys required).
-    """
-    idx = request.args.get('idx', type=int)
-    todos = load_todos()
-    if not idx or idx < 1 or idx > len(todos):
-        return jsonify({'success': False, 'error': 'Invalid index'}), 400
-
-    todo = todos[idx - 1]
-    title = todo.get('task') or 'Untitled Task'
-    description = todo.get('description') or ''
-
-    # calculate days remaining if possible
-    days_remaining = None
-    try:
-        if todo.get('due'):
-            due_dt = datetime.strptime(todo.get('due'), '%m/%d/%Y')
-            days_remaining = (due_dt.date() - datetime.today().date()).days
-    except Exception:
-        days_remaining = None
-
-    # Determine number of steps and deadlines
-    if days_remaining is None:
-        # unknown due date: suggest 3 steps across flexible timeline
-        breakdown = [
-            {'step': 'Clarify goal', 'due_by': 'ASAP', 'est_minutes': 30},
-            {'step': 'Research / gather resources', 'due_by': 'Within 2 days', 'est_minutes': 90},
-            {'step': 'Execute first draft and review', 'due_by': 'Within 5 days', 'est_minutes': 120}
-        ]
-    elif days_remaining <= 0:
-        # overdue or due today: urgent 3-step plan
-        breakdown = [
-            {'step': 'Do the smallest possible action now (15-30m)', 'due_by': 'Today', 'est_minutes': 30},
-            {'step': 'Remove one blocker preventing progress', 'due_by': 'Today', 'est_minutes': 30},
-            {'step': 'Schedule follow-up and finish remaining work', 'due_by': 'Within 2 days', 'est_minutes': 90}
-        ]
-    else:
-        # distribute into up to 4 milestones across remaining days
-        max_steps = 4
-        steps = min(max_steps, days_remaining) if days_remaining >= 1 else 1
-        breakdown = []
-        for i in range(1, steps + 1):
-            # compute a due date for this step
-            step_due = datetime.today().date() + timedelta(days=round(i * (days_remaining / steps)))
-            breakdown.append({
-                'step': f'Step {i}: Concrete subtask toward completion',
-                'due_by': step_due.isoformat(),
-                'est_minutes': 60
-            })
-
-    # If missing title/description, include suggestions
-    suggested_title = title
-    suggested_description = description or 'Try describing the goal in one sentence, then list 3 small next actions.'
-
+@app.route('/api/daily-reminder')
+def daily_reminder():
+    """Get daily reminder of high priority tasks"""
+    todos = cleanup_completed(load_todos())
+    todos = cleanup_deleted(todos)
+    high_priority = get_high_priority_reminder(todos)
+    
     return jsonify({
         'success': True,
-        'title': suggested_title,
-        'description': suggested_description,
-        'breakdown': breakdown,
-        'days_remaining': days_remaining
+        'count': len(high_priority),
+        'tasks': high_priority,
+        'message': f"You have {len(high_priority)} high priority tasks pending" if high_priority else "No high priority tasks today!"
+    })
+
+@app.route('/api/task-notifications/<int:idx>')
+def get_task_notifications(idx):
+    """Get notifications for a specific task (priority changes)"""
+    todos = load_todos()
+    if idx < 1 or idx > len(todos):
+        return jsonify({'success': False}), 400
+    
+    todo = todos[idx - 1]
+    current_priority = calculate_priority(todo.get('due', ''))
+    previous_priority = todo.get('previous_priority')
+    
+    notifications = []
+    if previous_priority and previous_priority != current_priority:
+        notifications.append({
+            'message': f"{todo.get('task')} moved to {current_priority}",
+            'old_priority': previous_priority,
+            'new_priority': current_priority,
+            'type': 'priority_change'
+        })
+    
+    return jsonify({
+        'success': True,
+        'notifications': notifications,
+        'current_priority': current_priority
     })
 
 if __name__ == '__main__':

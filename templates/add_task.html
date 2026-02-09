@@ -38,8 +38,20 @@
                         <small class="text-muted">Add context or notes</small>
                     </div>
 
+                    <div class="mb-4">
+                        <label for="recurrence" class="form-label fw-semibold">Recurrence (Optional)</label>
+                        <select class="form-select form-select-lg rounded-3" id="recurrence" name="recurrence">
+                            <option value="none">No Recurrence</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                        <small class="text-muted">Task will repeat automatically</small>
+                    </div>
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="/tasks" class="btn btn-secondary btn-lg rounded-3">Cancel</a>
+                        <a href="/" class="btn btn-secondary btn-lg rounded-3">Cancel</a>
                         <button type="submit" class="btn btn-primary btn-lg rounded-3">
                             <i class="bi bi-check-lg"></i> Add Task
                         </button>
